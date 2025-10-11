@@ -11,7 +11,8 @@ function createTask(id: string, title: string, description: string): Task {
     title,
     description,
     followingTasks: [],
-    createdAt: Date.now()
+    relatedFiles: [],
+    priority: 1,
   };
 }
 
