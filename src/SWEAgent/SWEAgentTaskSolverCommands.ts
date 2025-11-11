@@ -3,6 +3,7 @@ import type { Config } from "../config";
 import { taskSolverPrompt } from "../prompts/taskSolverPrompt";
 import type {Task} from "../task";
 import {diffNodejsSourceCode} from "../prompts/diff_nodejs";
+import {getClaudeCommand} from "./claudeCodeCommands";
 
 const diffjsPrompt = diffNodejsSourceCode;
 function addTaskSolverPromptIntoPath(
@@ -29,6 +30,11 @@ function environmentSetup(config: Config, gitRemoteUrl: string, task: Task, bIns
     if (config.agentType === SWEAgentType.GEMINI_CLI) {
       setupCommands.push(
         "npm install -g @google/gemini-cli",
+      );
+    }
+    else if (config.agentType === SWEAgentType.CLAUDE_CODE) {
+      setupCommands.push(
+        "npm install -g @anthropic-ai/claude-code",
       );
     }
     else throw new Error(`Unsupported agent type: ${config.agentType}`);
@@ -64,7 +70,12 @@ export function taskSolverCommands(
     return finalCommandsList;
   }
   else if (agentType === SWEAgentType.CLAUDE_CODE) {
-    throw new Error("CLAUDE_CODE is not supported yet for the task solver.");
+    let finalCommandList = [];
+    finalCommandList.push(...environmentSetup(config, gitRemoteUrl, task));
+    finalCommandList.push(
+      getClaudeCommand(config, false),
+    );
+    return finalCommandList;
   }
   else if (agentType === SWEAgentType.CODEX) {
     throw new Error("CODEX is not supported yet for the task solver.");

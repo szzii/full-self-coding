@@ -1,5 +1,5 @@
 import analyzeCodebase from "./analyzer";
-import TaskSolverManager from "./taskSolverManager";
+import { TaskSolverManager } from "./taskSolverManager";
 import { createConfig, type Config } from './config';
 import { getGitRemoteUrls } from './utils/git'; // New import
 
@@ -44,6 +44,6 @@ export async function main(): Promise<void> {
     const tasks: Task[] = await analyzeCodebase(config, gitRemoteUrl);
 
     // Step 2: execute tasks based on analysis
-    const taskSolverManager = new TaskSolverManager(config);
-    await taskSolverManager.executeTasks(tasks);
+    const taskSolverManager = new TaskSolverManager(config, gitRemoteUrl);
+    await taskSolverManager.start();
 }

@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebSearch",
+      "WebFetch(domain:news.google.com)",
+      "WebFetch(domain:www.bbc.com)",
+      "Bash(bun test:*)"
     ],
     "deny": [],
     "ask": []

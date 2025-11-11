@@ -43,9 +43,9 @@ export interface Config {
      * API key for Claude Code
      * export export ANTHROPIC_API_KEY='your-api-key-here'
      */
-    anthropicApiKey?: string;
+    anthropicAPIKey?: string;
     anthropicAPIKeyExportNeeded?: boolean;
-    anthropicApiBaseUrl?: string;
+    anthropicAPIBaseUrl?: string;
 
     /**
      * API key for OpenAI Codex
