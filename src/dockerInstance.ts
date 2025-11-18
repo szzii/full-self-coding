@@ -91,7 +91,7 @@ export class DockerInstance {
 
         try {
             for (const cmd of commands) {
-                console.log(`*****Running command: ${cmd} at docker: ${this.containerName}`);
+                //console.log(`*****Running command: ${cmd} at docker: ${this.containerName}`);
 
                 // wait for random time between 0.1 and 2 seconds to make sure the command is executed
                 await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 1900));
@@ -103,7 +103,7 @@ export class DockerInstance {
                 });
 
                 const cmdOut = streamToTextSync(execResult.stdout);
-                console.log(`Command output: ${cmdOut}`);
+                //console.log(`Command output: ${cmdOut}`);
                 output += `\n$ ${cmd}\n${cmdOut}`;
 
                 if (execResult.exitCode !== 0) {

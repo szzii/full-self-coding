@@ -7,14 +7,30 @@ import * as path from 'path';
 import * as os from 'os';
 
 
+export interface GitStateOptions {
+  autoStash?: boolean;
+  autoCommit?: boolean;
+  ignoreUntracked?: boolean;
+  backupBranch?: string;
+}
+
 export class CodeCommitter {
   private taskResults: TaskResult[];
   private originalGitNode: string;
   private gitRepoPath: string;
+  private gitStateOptions: GitStateOptions;
+  private stashedChanges: boolean = false;
 
-  constructor(taskResults: TaskResult[], gitRepoPath: string = '.') {
+  constructor(taskResults: TaskResult[], gitRepoPath: string = '.', gitStateOptions: GitStateOptions = {}) {
     this.taskResults = taskResults;
     this.gitRepoPath = gitRepoPath;
+    this.gitStateOptions = {
+      autoStash: false,
+      autoCommit: false,
+      ignoreUntracked: false,
+      backupBranch: undefined,
+      ...gitStateOptions
+    };
     this.originalGitNode = this.getCurrentGitNode();
   }
 
@@ -136,17 +152,46 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
   }
 
   /**
-   * Switch back to the original git node
+   * Switch back to the original git node and ensure working directory is clean
    */
   private returnToOriginalNode(): void {
     try {
+      // First, switch to the original commit
       execSync(`git checkout ${this.originalGitNode}`, {
         cwd: this.gitRepoPath,
         encoding: 'utf8'
       });
       console.log(`Returned to original git node: ${this.originalGitNode}`);
+
+      // Clean up any leftover working directory changes
+      this.cleanWorkingDirectory();
+
     } catch (error) {
       throw new Error(`Failed to return to original git node ${this.originalGitNode}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Clean the working directory by discarding all changes
+   */
+  private cleanWorkingDirectory(): void {
+    try {
+      // Reset all staged and unstaged changes
+      execSync('git reset --hard HEAD', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      // Clean untracked files and directories
+      execSync('git clean -fd', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      console.log('Working directory cleaned - all changes discarded');
+    } catch (error) {
+      console.warn(`Warning: Could not clean working directory: ${error instanceof Error ? error.message : String(error)}`);
+      // Don't throw an error for cleanup failures, just log it
     }
   }
 
@@ -159,10 +204,213 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
         cwd: this.gitRepoPath,
         encoding: 'utf8'
       }).trim();
+
+      if (this.gitStateOptions.ignoreUntracked) {
+        // Ignore untracked files (??), only check for modifications and deletions
+        const lines = status.split('\n').filter(line => line.trim());
+        const trackedChanges = lines.filter(line => !line.startsWith('??'));
+        return trackedChanges.length === 0;
+      }
+
       return status === '';
     } catch (error) {
       return false;
     }
+  }
+
+  /**
+   * Get detailed git status information
+   */
+  private getGitStatusInfo(): { modified: string[], untracked: string[], staged: string[] } {
+    try {
+      const status = execSync('git status --porcelain', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      }).trim();
+
+      const lines = status.split('\n').filter(line => line.trim());
+      const modified: string[] = [];
+      const untracked: string[] = [];
+      const staged: string[] = [];
+
+      for (const line of lines) {
+        const statusCode = line.substring(0, 2);
+        const filePath = line.substring(3);
+
+        if (statusCode.startsWith('??')) {
+          untracked.push(filePath);
+        } else if (statusCode.includes('M') || statusCode.includes('D') || statusCode.includes('A')) {
+          staged.push(filePath);
+        } else {
+          modified.push(filePath);
+        }
+      }
+
+      return { modified, untracked, staged };
+    } catch (error) {
+      return { modified: [], untracked: [], staged: [] };
+    }
+  }
+
+  /**
+   * Create backup branch before modifying Git state
+   */
+  private createBackupBranch(): string | null {
+    if (!this.gitStateOptions.backupBranch) {
+      return null;
+    }
+
+    try {
+      const timestamp = Date.now();
+      const backupBranchName = `${this.gitStateOptions.backupBranch}-${timestamp}`;
+
+      execSync(`git checkout -b ${backupBranchName}`, {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      execSync(`git checkout ${this.originalGitNode}`, {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      console.log(`Created backup branch: ${backupBranchName}`);
+      return backupBranchName;
+    } catch (error) {
+      console.warn(`Failed to create backup branch: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  }
+
+  /**
+   * Automatically commit current changes
+   */
+  private autoCommitChanges(): boolean {
+    try {
+      const status = execSync('git status --porcelain', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      }).trim();
+
+      if (!status) {
+        return true; // Nothing to commit
+      }
+
+      // Add all changes
+      execSync('git add -A', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      // Create commit
+      const timestamp = new Date().toISOString();
+      execSync(`git commit -m "Auto-commit before CodeCommitter - ${timestamp}"`, {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      console.log('Auto-committed existing changes');
+      return true;
+    } catch (error) {
+      console.error(`Failed to auto-commit changes: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Stash current changes
+   */
+  private stashChanges(): boolean {
+    try {
+      // Stash with a descriptive message
+      const timestamp = new Date().toISOString();
+      execSync(`git stash push -m "CodeCommitter auto-stash - ${timestamp}"`, {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      this.stashedChanges = true;
+      console.log('Stashed existing changes');
+      return true;
+    } catch (error) {
+      console.error(`Failed to stash changes: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Restore stashed changes
+   */
+  private restoreStashedChanges(): boolean {
+    if (!this.stashedChanges) {
+      return true;
+    }
+
+    try {
+      execSync('git stash pop', {
+        cwd: this.gitRepoPath,
+        encoding: 'utf8'
+      });
+
+      this.stashedChanges = false;
+      console.log('Restored stashed changes');
+      return true;
+    } catch (error) {
+      console.error(`Failed to restore stashed changes: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Handle dirty Git repository based on options
+   */
+  private async handleDirtyGitRepo(): Promise<{ success: boolean; action?: string; error?: string }> {
+    const statusInfo = this.getGitStatusInfo();
+
+    console.log(`Git repository is not clean:`);
+    if (statusInfo.modified.length > 0) {
+      console.log(`  Modified files: ${statusInfo.modified.join(', ')}`);
+    }
+    if (statusInfo.untracked.length > 0) {
+      console.log(`  Untracked files: ${statusInfo.untracked.join(', ')}`);
+    }
+    if (statusInfo.staged.length > 0) {
+      console.log(`  Staged files: ${statusInfo.staged.join(', ')}`);
+    }
+
+    // Create backup branch if specified
+    const backupBranch = this.createBackupBranch();
+
+    // Try different cleanup strategies based on options
+    if (this.gitStateOptions.autoStash) {
+      console.log('Attempting to stash changes...');
+      if (this.stashChanges()) {
+        return { success: true, action: 'stash' };
+      }
+    }
+
+    if (this.gitStateOptions.autoCommit) {
+      console.log('Attempting to auto-commit changes...');
+      if (this.autoCommitChanges()) {
+        return { success: true, action: 'commit' };
+      }
+    }
+
+    // If we got here, automatic handling failed or wasn't enabled
+    const errorMessage = `Git repository is not in a clean state. Please commit or stash changes before running CodeCommitter.
+
+Options:
+1. Commit your changes: git add -A && git commit -m "WIP: save progress"
+2. Stash your changes: git stash push -m "WIP: save progress"
+3. Enable auto-handling:
+   - Auto-stash: new CodeCommitter(tasks, '.', { autoStash: true })
+   - Auto-commit: new CodeCommitter(tasks, '.', { autoCommit: true })
+   - Backup branch: new CodeCommitter(tasks, '.', { backupBranch: 'codecommitter-backup' })
+4. Ignore untracked files: new CodeCommitter(tasks, '.', { ignoreUntracked: true })
+
+${backupBranch ? `Backup branch created: ${backupBranch}` : ''}`;
+
+    return { success: false, action: undefined, error: errorMessage };
   }
 
   /**
@@ -205,7 +453,10 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
 
       // Ensure git repo is clean before starting
       if (!this.isGitRepoClean()) {
-        throw new Error('Git repository is not in a clean state. Please commit or stash changes before running CodeCommitter.');
+        const handleResult = await this.handleDirtyGitRepo();
+        if (!handleResult.success) {
+          throw new Error(handleResult.error);
+        }
       }
 
       // Create task branch
@@ -287,11 +538,23 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
       }
     }
 
+    // Restore stashed changes if any were made
+    if (this.stashedChanges) {
+      console.log('\nRestoring stashed changes...');
+      if (this.restoreStashedChanges()) {
+        console.log('Successfully restored stashed changes');
+      } else {
+        console.warn('Failed to restore stashed changes. You may need to manually restore them with: git stash pop');
+      }
+    }
+
     const summary = {
       totalTasks: this.taskResults.length,
       successfulTasks,
       failedTasks,
-      results
+      results,
+      gitStateOptions: this.gitStateOptions,
+      stashedChanges: this.stashedChanges
     };
 
     console.log(`\n=== CodeCommitter Summary ===`);
@@ -299,6 +562,10 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
     console.log(`Successful: ${summary.successfulTasks}`);
     console.log(`Failed: ${summary.failedTasks}`);
     console.log(`Original git node: ${this.originalGitNode}`);
+
+    if (this.stashedChanges) {
+      console.log(`Stashed changes were restored`);
+    }
 
     return summary;
   }
@@ -315,5 +582,34 @@ Completed: ${taskResult.completedAt ? new Date(taskResult.completedAt).toISOStri
    */
   public getTaskResults(): TaskResult[] {
     return [...this.taskResults];
+  }
+
+  /**
+   * Static method to handle dirty Git state automatically with sensible defaults
+   */
+  static createWithAutoCleanup(taskResults: TaskResult[], gitRepoPath: string = '.'): CodeCommitter {
+    return new CodeCommitter(taskResults, gitRepoPath, {
+      autoStash: true,
+      backupBranch: 'codecommitter-backup'
+    });
+  }
+
+  /**
+   * Static method to create CodeCommitter that ignores untracked files
+   */
+  static createIgnoringUntracked(taskResults: TaskResult[], gitRepoPath: string = '.'): CodeCommitter {
+    return new CodeCommitter(taskResults, gitRepoPath, {
+      ignoreUntracked: true
+    });
+  }
+
+  /**
+   * Static method to create CodeCommitter that auto-commits changes
+   */
+  static createWithAutoCommit(taskResults: TaskResult[], gitRepoPath: string = '.'): CodeCommitter {
+    return new CodeCommitter(taskResults, gitRepoPath, {
+      autoCommit: true,
+      backupBranch: 'codecommitter-backup'
+    });
   }
 }

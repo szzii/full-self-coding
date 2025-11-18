@@ -70,7 +70,15 @@ export class TaskSolver {
       const lastCommand = commandArray.pop();
 
       // run the first N-1 commands
-      const dockerResult = await this.dockerInstance.runCommands(commandArray, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+      // const dockerResult = await this.dockerInstance.runCommands(commandArray, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+
+      for (const eachCommand of commandArray) {
+        const dockerResult = await this.dockerInstance.runCommandAsync(eachCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+        if (dockerResult.status !== DockerRunStatus.SUCCESS) {
+          console.error(`Docker run failed with status ${dockerResult.status}`);
+          throw new Error(`Docker run failed with status ${dockerResult.status}`);
+        }
+      }
 
       let finalOutputOfTaskSolverCommand = null;
 
@@ -88,14 +96,14 @@ export class TaskSolver {
         throw new Error(`Docker run task solver command failed with status ${finalOutputOfTaskSolverCommand.status}`);
       }
 
-      // parse the output
-      if (dockerResult.status !== DockerRunStatus.SUCCESS) {
-        console.error(`Docker run failed with status ${dockerResult.status}`);
-        throw new Error(`Docker run failed with status ${dockerResult.status}`);
-      }
+      // // parse the output
+      // if (dockerResult.status !== DockerRunStatus.SUCCESS) {
+      //   console.error(`Docker run failed with status ${dockerResult.status}`);
+      //   throw new Error(`Docker run failed with status ${dockerResult.status}`);
+      // }
 
-      console.log("All commands executed successfully.");
-      console.log(dockerResult.output);
+      // console.log("All commands executed successfully.");
+      // console.log(dockerResult.output);
 
       // read the generated final report from /app/finalReport.json
       const readFinalReportCommand = `node /app/diff/run.js && cat /app/finalReport.json`;
@@ -154,7 +162,7 @@ export class TaskSolver {
       }
       finally {
         if (shutdown) {
-          //await this.dockerInstance.shutdownContainer();
+          await this.dockerInstance.shutdownContainer();
         }
       }
     }

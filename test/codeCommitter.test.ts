@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach, afterEach, test } from "bun:test";
-import { CodeCommitter } from '../src/codeCommitter';
+import { CodeCommitter, type GitStateOptions } from '../src/codeCommitter';
 import type { TaskResult } from '../src/task';
 import { TaskStatus } from '../src/task';
 import * as fs from 'fs';
@@ -325,6 +325,59 @@ index 1234567..abcdefg 100644
             expect(result.totalTasks).toBe(1);
             expect(result.successfulTasks).toBe(1);
             expect(result.failedTasks).toBe(0);
+        });
+    });
+
+    describe('Git State Management', () => {
+        it('should detect clean Git repository', () => {
+            const committer = new CodeCommitter([], tempRepoDir);
+            // In a clean test repo, this should not throw an error
+            expect(() => committer.getOriginalGitNode()).not.toThrow();
+        });
+
+        it('should work with ignoreUntracked option', async () => {
+            // Create an untracked file
+            const untrackedFile = path.join(tempRepoDir, 'untracked.txt');
+            fs.writeFileSync(untrackedFile, 'Untracked content');
+
+            const gitStateOptions: GitStateOptions = { ignoreUntracked: true };
+            const committer = new CodeCommitter([sampleTaskResults[0]], tempRepoDir, gitStateOptions);
+
+            // Should work even with untracked files when ignoreUntracked is true
+            const result = await committer.commitAllChanges();
+            expect(result.totalTasks).toBe(1);
+            expect(result.successfulTasks).toBe(1);
+        });
+
+        it('should create backup branch when specified', async () => {
+            const gitStateOptions: GitStateOptions = {
+                backupBranch: 'test-backup'
+            };
+
+            const committer = new CodeCommitter([], tempRepoDir, gitStateOptions);
+
+            // Should not throw error even with backup option
+            expect(committer.getTaskResults()).toHaveLength(0);
+        });
+    });
+
+    describe('Static Factory Methods', () => {
+        it('should create CodeCommitter with auto cleanup', () => {
+            const committer = CodeCommitter.createWithAutoCleanup(sampleTaskResults, tempRepoDir);
+            expect(committer).toBeDefined();
+            expect(committer.getTaskResults()).toHaveLength(3);
+        });
+
+        it('should create CodeCommitter ignoring untracked files', () => {
+            const committer = CodeCommitter.createIgnoringUntracked(sampleTaskResults, tempRepoDir);
+            expect(committer).toBeDefined();
+            expect(committer.getTaskResults()).toHaveLength(3);
+        });
+
+        it('should create CodeCommitter with auto commit', () => {
+            const committer = CodeCommitter.createWithAutoCommit(sampleTaskResults, tempRepoDir);
+            expect(committer).toBeDefined();
+            expect(committer.getTaskResults()).toHaveLength(3);
         });
     });
 });

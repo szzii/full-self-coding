@@ -18,7 +18,10 @@
       "Bash(/tmp)",
       "Bash(chmod:*)",
       "Bash(./test-cli.js)",
-      "Bash(./dist/main.js:*)"
+      "Bash(./dist/main.js:*)",
+      "Bash(bash:*)",
+      "Bash(powershell:*)",
+      "Bash(./script/verify-install.sh:*)"
     ],
     "deny": [],
     "ask": []

@@ -94,7 +94,18 @@ export async function main(): Promise<void> {
 
     // step 5. save the final report to "./.fsc/finalReport.txt"
     const yymmddhhmmss = getYYMMDDHHMMSS();
-    fs.writeFileSync("./.fsc/finalReport_" + yymmddhhmmss + ".txt", allTaskReports.join("\n"));
+
+    // try to create "./.fsc" folder first, and if it already exists, just ignore the error
+    try {
+        fs.mkdirSync("./.fsc");
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+            console.error(`Error creating "./.fsc" folder: ${error}`);
+            process.exit(1);
+        }
+    }
+
+    fs.writeFileSync("./.fsc/finalReport_" + yymmddhhmmss + ".txt", JSON.stringify(allTaskReports, null, 2));
 }
 
 // Call the main function if this file is run directly
