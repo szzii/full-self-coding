@@ -54,9 +54,9 @@ function environmentSetup(config: Config, gitRemoteUrl: string, task: Task, bIns
   }
 
   setupCommands.push("mkdir /app/repo/fsc");
-  setupCommands.push(
-    ...addTaskSolverPromptIntoPath(
-      taskSolverPrompt(task, config),"/app/taskSolverPrompt.txt"));
+  // setupCommands.push(
+  //   ...addTaskSolverPromptIntoPath(
+  //     taskSolverPrompt(task, config),"/app/taskSolverPrompt.txt"));
   return setupCommands;
 }
 

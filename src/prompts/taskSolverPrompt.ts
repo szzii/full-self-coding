@@ -25,6 +25,11 @@ Now please complete your task. Here are the rules:
 
 6. Please double check the finalReport.json file to make sure it is correct in JSON format and can be parsed successfully.
 7. After all tasks are completed, please run "node /app/diff/run.js". This script will save the structured git diff to /app/git_diff.txt.
+8. For any string field in the JSON object, please double check that only use single quotes, and make sure that it does not contain any double quotes.
+
+Here are some extra messages:
+
+${config.customizedMessage ?? ''}
 
 Below is your work style. Please follow it as much as possible: 
 ${config.workStyle}

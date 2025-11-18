@@ -4,13 +4,13 @@ import { type Config, SWEAgentType } from "../src/config";
 import type { Task } from "../src/task";
 import { WorkStyle } from "../src/workStyle";
 import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
+import {CLAUDE_CODE_API_KEY, CLAUDE_CODE_API_URL} from "./apiKeySetup";
 
 
-
-test("analyzeCodebase generates tasks correctly with GEMINI_CLI agent in real Docker",  async () => {
+test("analyzeCodebase generates tasks correctly with claude code agent in real Docker",  async () => {
     const config: Config = {
         agentType: SWEAgentType.CLAUDE_CODE,
-        dockerImageRef: "ubuntu_with_node_and_git", // Use a real Docker image
+        dockerImageRef: "node:latest", // Use a real Docker image
         dockerTimeoutSeconds: 10000, // Increased timeout for real Docker operations
         maxDockerContainers: 5,
         maxParallelDockerContainers: 1,
@@ -20,8 +20,8 @@ test("analyzeCodebase generates tasks correctly with GEMINI_CLI agent in real Do
         dockerCpuCores: 1,
         workStyle: WorkStyle.DEFAULT, // WorkStyle is imported from workStyle.ts in analyzer.ts
         anthropicAPIKeyExportNeeded: true,
-        anthropicAPIBaseUrl: "https://api.z.ai/api/anthropic",
-        anthropicAPIKey: "a9877140818742df99f498feefed042a.jag6QKTCWy773Xlg",
+        anthropicAPIBaseUrl: CLAUDE_CODE_API_URL,
+        anthropicAPIKey: CLAUDE_CODE_API_KEY,
         codingStyleLevel: 0,
     };
     const gitRemoteUrl = "https://github.com/TinyCC/tinycc"; // Real Git repo

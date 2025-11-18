@@ -3,22 +3,22 @@ import { type Config, SWEAgentType } from "../config";
 
 
 function claudeRunTaskWithAnthropicBaseURLAndAPIKey(baseURL: string, apiKey: string): string {
-    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 
 function claudeRunTaskWithAnthropicAPIKey(apiKey: string): string {
-    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 
 export function claudeRunAnalyzerWithAnthropicBaseURLAndAPIKey(baseURL: string, apiKey: string): string {
-    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 
 function claudeRunAnalyzerWithAnthropicAPIKey(apiKey: string): string {
-    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 
@@ -36,7 +36,7 @@ export function getClaudeCommand(config: Config, bIsAnalyzer: boolean = true): s
     if (config.anthropicAPIKeyExportNeeded === false) {
       
         if (bIsAnalyzer) {
-          return `export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+          return `export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
         }
         else {
           return `export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/taskSolverPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
@@ -74,7 +74,7 @@ export function getClaudeCommand(config: Config, bIsAnalyzer: boolean = true): s
 //     }
 
 //     if (config.anthropicAPIKeyExportNeeded === false) {
-//         return `export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+//         return `export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
 //     }
 
 //     // below are all the cases when we need to export the API key

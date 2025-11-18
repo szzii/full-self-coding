@@ -4,6 +4,7 @@ import { TaskStatus } from "./task";
 import { DockerInstance, DockerRunStatus } from "./dockerInstance";
 import { taskSolverCommands } from "./SWEAgent/SWEAgentTaskSolverCommands";
 import { trimJSONSingleObject } from "./utils/trimJSON";
+import { taskSolverPrompt } from "./prompts/taskSolverPrompt";
 export class TaskSolver {
     private config: Config;
     private task: Task;
@@ -37,7 +38,29 @@ export class TaskSolver {
 
       const imageRef = this.config.dockerImageRef || "node:latest";
       console.log(`task solver is now solving task ${this.task.ID}`);
-      this.dockerContainerName = await this.dockerInstance.startContainer(imageRef);
+      this.dockerContainerName = await this.dockerInstance.startContainer(imageRef, this.task.ID);
+
+
+      // // copy all files related to git to the container
+      // // create ~/.ssh folder in the container
+      // await this.dockerInstance.runCommands(['mkdir', '-p', '/root/.ssh']);
+      // // copy all files in ~/.ssh to ~/.ssh (/root/.ssh) in the container
+      // await this.dockerInstance.copyFilesToContainer('~/.ssh', '/root/.ssh');
+      // // read ~/.gitconfig on local machine using fs  
+      // const fs = await import('fs');
+      // const dotGitConfigFileText = await fs.promises.readFile('~/.gitconfig', 'utf8');
+      // // copy ~/.gitconfig to ~/.gitconfig (/root/.gitconfig) in the container
+      // await this.dockerInstance.copyFileToContainer(dotGitConfigFileText, '/root/.gitconfig');
+
+
+      // first get the task prompt and save/copy to the docker container
+      const taskPrompt = taskSolverPrompt(this.task, this.config);
+      
+      // save the task prompt to the docker container
+      await this.dockerInstance.runCommands([
+        "mkdir -p /app"
+      ], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+      await this.dockerInstance.copyFileToContainer(taskPrompt, "/app/taskSolverPrompt.txt");
 
       // get the command
       const commandArray = taskSolverCommands(this.agentType, this.config, this.task, this.gitURL);
@@ -60,6 +83,7 @@ export class TaskSolver {
       const readFinalReportCommand = `node /app/diff/run.js && cat /app/finalReport.json`;
 
       const finalReportResult = await this.dockerInstance.runCommands([readFinalReportCommand], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+
       if (finalReportResult.status !== DockerRunStatus.SUCCESS) {
         console.error(`Docker run failed with status ${finalReportResult.status}`);
       }
@@ -101,6 +125,11 @@ export class TaskSolver {
           this.taskResult.gitDiff = gitDiffResult;
           console.log("Git diff read successfully.");
         }
+
+        // the last step, output "done" to "/app/done.txt"
+        await this.dockerInstance.runCommands([
+          "echo \"done\" > /app/done.txt"
+        ], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
       } catch (error) {
         console.error(`Failed to parse final report: ${error}`);
         throw new Error(`Failed to parse final report: ${error}`);

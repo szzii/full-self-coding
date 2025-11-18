@@ -29,6 +29,12 @@ export interface ConfigReaderOptions {
      * @default true
      */
     createDirectory?: boolean;
+
+    /**
+     * Whether to read supplementary configuration from project root
+     * @default true - reads from ./config.json
+     */
+    readSupplementaryConfig?: boolean;
 }
 
 /**
@@ -38,6 +44,7 @@ export class ConfigReader {
     private readonly configPath: string;
     private readonly throwOnMissing: boolean;
     private readonly createDirectory: boolean;
+    private readonly readSupplementaryConfig: boolean;
 
     constructor(options: ConfigReaderOptions = {}) {
         const configDir = options.configDir || this.getDefaultConfigDir();
@@ -45,6 +52,7 @@ export class ConfigReader {
         this.configPath = path.resolve(configDir, configFileName);
         this.throwOnMissing = options.throwOnMissing || false;
         this.createDirectory = options.createDirectory ?? true;
+        this.readSupplementaryConfig = options.readSupplementaryConfig ?? true;
 
         // Create config directory if it doesn't exist and createDirectory is true
         if (this.createDirectory && !this.configExists()) {
@@ -80,24 +88,34 @@ export class ConfigReader {
      */
     public readConfig(): Config {
         try {
-            // Check if config file exists
-            if (!fs.existsSync(this.configPath)) {
+            let baseConfig: Partial<Config> = {};
+
+            // Check if main config file exists
+            if (fs.existsSync(this.configPath)) {
+                // Read and parse the config file
+                const rawConfig = this.readConfigFile();
+
+                // Validate the configuration
+                const validatedConfig = this.validateConfig(rawConfig);
+                baseConfig = validatedConfig;
+            } else {
                 if (this.throwOnMissing) {
                     throw new Error(`Configuration file not found at: ${this.configPath}`);
                 }
-
                 console.warn(`Configuration file not found at: ${this.configPath}. Using default configuration.`);
-                return DEFAULT_CONFIG;
             }
 
-            // Read and parse the config file
-            const rawConfig = this.readConfigFile();
+            // Read supplementary project-level config if it exists and is enabled
+            const supplementaryConfig = this.readSupplementaryConfig ? this.readSupplementaryConfigFile() : {};
 
-            // Validate the configuration
-            const validatedConfig = this.validateConfig(rawConfig);
+            // Merge base config with supplementary config (supplementary config takes precedence)
+            const mergedConfig = { ...baseConfig, ...supplementaryConfig };
+
+            // Validate the merged configuration
+            const validatedMergedConfig = this.validateConfig(mergedConfig);
 
             // Merge with defaults
-            return createConfig(validatedConfig);
+            return createConfig(validatedMergedConfig);
 
         } catch (error) {
             if (this.throwOnMissing) {
@@ -225,6 +243,43 @@ export class ConfigReader {
             if (!allowEmpty && value.trim() === '') {
                 throw new Error(`${fieldName} cannot be empty`);
             }
+        }
+    }
+
+    /**
+     * Read supplementary project-level configuration file
+     * @returns Partial configuration from project-level config.json
+     */
+    private readSupplementaryConfigFile(): Partial<Config> {
+        try {
+            // Look for config.json at ./.fsc/config.json
+            // This path is relative to the current working directory
+            const supplementaryConfigPath = path.resolve(process.cwd(), '.fsc', 'config.json');
+
+            if (!fs.existsSync(supplementaryConfigPath)) {
+                console.log(`Supplementary configuration file not found at: ${supplementaryConfigPath}`);
+                return {};
+            }
+
+            console.log(`Reading supplementary configuration from: ${supplementaryConfigPath}`);
+
+            // Read and parse the supplementary config file
+            const fileContent = fs.readFileSync(supplementaryConfigPath, 'utf8');
+            const parsedConfig = JSON.parse(fileContent);
+
+            // Validate the supplementary configuration
+            const validatedConfig = this.validateConfig(parsedConfig);
+
+            console.log(`Successfully loaded supplementary configuration with ${Object.keys(validatedConfig).length} items`);
+            return validatedConfig;
+
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                console.warn(`Invalid JSON in supplementary configuration file: ${error.message}`);
+            } else {
+                console.warn(`Failed to read supplementary configuration file: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            return {};
         }
     }
 

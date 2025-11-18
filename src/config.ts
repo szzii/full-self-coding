@@ -124,6 +124,15 @@ export interface Config {
      * customized coding style of the agent
      */
     customizedCodingStyle?: string;
+
+    /**
+     * 
+     * customized message of the agent, including the
+     * environment variables, instructions, certain task prompts,
+     * document references, and all other customized messages
+     * that user want to send to the agent
+     */
+    customizedMessage?: string;
 }
 
 /**
@@ -135,7 +144,7 @@ export const DEFAULT_CONFIG: Config = {
     dockerImageRef: 'node:latest',
     maxParallelDockerContainers: 10,
     dockerTimeoutSeconds: 300000,
-    maxTasks: 100,
+    maxTasks: 10,
     minTasks: 1,
     dockerMemoryMB: 512,
     dockerCpuCores: 1,

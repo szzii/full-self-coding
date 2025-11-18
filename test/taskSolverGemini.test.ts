@@ -5,11 +5,12 @@ import {  SWEAgentType } from "../src/config";
 import type { Task } from "../src/task";
 import type { Config } from "../src/config";
 import { WorkStyle } from "../src/workStyle";
+import {GEMINI_API_KEY} from "./apiKeySetup";
 
 test("run a task with gemini cli agent", async () => {
     const config: Config = {
         agentType: SWEAgentType.GEMINI_CLI,
-        dockerImageRef: "ubuntu_with_node_and_git", // Use a real Docker image
+        dockerImageRef: "node:latest", // Use a real Docker image
         dockerTimeoutSeconds: 10000000, // Increased timeout for real Docker operations
         maxDockerContainers: 5,
         maxParallelDockerContainers: 1,
@@ -20,7 +21,7 @@ test("run a task with gemini cli agent", async () => {
         workStyle: WorkStyle.DEFAULT, // WorkStyle is imported from workStyle.ts in analyzer.ts
         codingStyleLevel: 0,
         googleGeminiAPIKeyExportNeeded: true,
-        googleGeminiApiKey: 'AIzaSyBNTBwu1BNuwtHgDjImaoBy2D3co6JkiKs',
+        googleGeminiApiKey: GEMINI_API_KEY,
     };
     
     const gitRemoteUrl = "https://github.com/lidangzzz/tinycc";

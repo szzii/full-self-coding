@@ -24,9 +24,37 @@ export async function analyzeCodebase(
 
     try {
         const dockerImageRef = config.dockerImageRef || 'node:latest';
-        containerName = await docker.startContainer(dockerImageRef);
+
+        // the name of container = "analyzer-container" + date-and-time-in-yymmddhhmmss
+        const containerName = `analyzer-container-${Date.now().toString().substring(2, 14)}`;
+        await docker.startContainer(dockerImageRef, containerName);
 
         const allCommands: string[] = [];
+
+        // 0. Create the fsc directory and prompt.txt
+        // 0.1 run docker command that create /app folder
+        await docker.runCommands(['mkdir', '-p', '/app']);
+
+        // 0.2 get the prompt
+        const workStyleDescription = await getWorkStyleDescription(config.workStyle || WorkStyle.DEFAULT, { customLabel: config.customizedWorkStyle });
+        const codingStyleDescription = getCodingStyle(config.codingStyleLevel || 0);
+        const prompt = analyzerPrompt(workStyleDescription, codingStyleDescription, config);
+
+        // 0.3 send the file to /app/codeAnalyzerPrompt.txt
+        await docker.copyFileToContainer(prompt, '/app/codeAnalyzerPrompt.txt');
+        // step 0 done
+
+        // // 0.4 copy all files related to git to the container
+        // // 0.4.1 create ~/.ssh folder in the container
+        // await docker.runCommands(['mkdir', '-p', '/root/.ssh']);
+        // // 0.4.2 copy all files in ~/.ssh to ~/.ssh (/root/.ssh) in the container
+        // await docker.copyFilesToContainer('~/.ssh', '/root/.ssh');
+        // // 0.4.3 read ~/.gitconfig on local machine using fs
+        // const fs = await import('fs');
+        // const dotGitConfigFileText = await fs.promises.readFile('~/.gitconfig', 'utf8');
+        // // 0.4.4 copy ~/.gitconfig to ~/.gitconfig (/root/.gitconfig) in the container
+        // await docker.copyFileToContainer(dotGitConfigFileText, '/root/.gitconfig');
+
 
         // 1. Clone the source code repository
         allCommands.push(`git clone ${gitRemoteUrl} /app/repo`);
@@ -45,18 +73,11 @@ export async function analyzeCodebase(
             allCommands.push(`npm install -g @anthropic-ai/claude-code`);
         }   
 
-        // 4. Create the fsc directory and prompt.txt
-        const workStyleDescription = await getWorkStyleDescription(config.workStyle || WorkStyle.DEFAULT, { customLabel: config.customizedWorkStyle });
-        const codingStyleDescription = getCodingStyle(config.codingStyleLevel || 0);
-        const prompt = analyzerPrompt(workStyleDescription, codingStyleDescription, config);
 
-        allCommands.push(`mkdir -p /app/repo/fsc`); // -p ensures parent directories are created if they don't exist
-        allCommands.push(`echo "${prompt}" > /app/repo/fsc/prompt.txt`);
-        allCommands.push(`ls -l /app/repo/fsc/prompt.txt`); // Verify prompt.txt creation
 
         if (config.agentType === SWEAgentType.GEMINI_CLI) {
             // 5. Prepare API key export and gemini command
-            let geminiCommand = `gemini -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --yolo`;
+            let geminiCommand = `gemini -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --yolo`;
             let apiKeyExportCommand: string | undefined;
 
             if (config.googleGeminiApiKey && config.googleGeminiAPIKeyExportNeeded) {
@@ -100,7 +121,7 @@ export async function analyzeCodebase(
         }
 
         // 6. Read the generated tasks.json
-        const readTasksCommand = `cat /app/repo/fsc/tasks.json`;
+        const readTasksCommand = `cat /app/tasks.json`;
         const readTasksResult = await docker.runCommands(
             [readTasksCommand],
             config.dockerTimeoutSeconds? config.dockerTimeoutSeconds : 0

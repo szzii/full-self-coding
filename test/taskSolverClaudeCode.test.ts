@@ -5,11 +5,12 @@ import {  SWEAgentType } from "../src/config";
 import type { Task } from "../src/task";
 import type { Config } from "../src/config";
 import { WorkStyle } from "../src/workStyle";
+import {CLAUDE_CODE_API_KEY, CLAUDE_CODE_API_URL} from "./apiKeySetup";
 
 test("run a task with claude code agent", async () => {
     const config: Config = {
         agentType: SWEAgentType.CLAUDE_CODE,
-        dockerImageRef: "ubuntu_with_node_and_git", // Use a real Docker image
+        dockerImageRef: "node:latest", // Use a real Docker image
         dockerTimeoutSeconds: 10000000, // Increased timeout for real Docker operations
         maxDockerContainers: 5,
         maxParallelDockerContainers: 1,
@@ -20,8 +21,8 @@ test("run a task with claude code agent", async () => {
         workStyle: WorkStyle.DEFAULT, // WorkStyle is imported from workStyle.ts in analyzer.ts
         codingStyleLevel: 0,
         anthropicAPIKeyExportNeeded: true,
-        anthropicAPIBaseUrl: "https://api.z.ai/api/anthropic",
-        anthropicAPIKey: "a9877140818742df99f498feefed042a.jag6QKTCWy773Xlg",
+        anthropicAPIBaseUrl: CLAUDE_CODE_API_URL,
+        anthropicAPIKey: CLAUDE_CODE_API_KEY,
     };
     
     const gitRemoteUrl = "https://github.com/lidangzzz/tinycc";

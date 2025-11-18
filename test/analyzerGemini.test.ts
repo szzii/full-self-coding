@@ -4,13 +4,13 @@ import { type Config, SWEAgentType } from "../src/config";
 import type { Task } from "../src/task";
 import { WorkStyle } from "../src/workStyle";
 import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
-
+import { GEMINI_API_KEY } from "./apiKeySetup";
 
 
 test("analyzeCodebase generates tasks correctly with GEMINI_CLI agent in real Docker",  async () => {
     const config: Config = {
         agentType: SWEAgentType.GEMINI_CLI,
-        dockerImageRef: "ubuntu_with_node_and_git", // Use a real Docker image
+        dockerImageRef: "node:latest", // Use a real Docker image
         dockerTimeoutSeconds: 10000, // Increased timeout for real Docker operations
         maxDockerContainers: 5,
         maxParallelDockerContainers: 1,
@@ -20,12 +20,12 @@ test("analyzeCodebase generates tasks correctly with GEMINI_CLI agent in real Do
         dockerCpuCores: 1,
         workStyle: WorkStyle.DEFAULT, // WorkStyle is imported from workStyle.ts in analyzer.ts
         codingStyleLevel: 0,
+        googleGeminiAPIKeyExportNeeded: true,
+        googleGeminiApiKey: GEMINI_API_KEY
     };
     const gitRemoteUrl = "https://github.com/TinyCC/tinycc"; // Real Git repo
 
-    const tasks = await analyzeCodebase(config, gitRemoteUrl, true,
-        'export GEMINI_API_KEY=AIzaSyBhoZfYrpmU8sLu6SmFrqF5IrdyCJsEDLI '
-    );
+    const tasks = await analyzeCodebase(config, gitRemoteUrl, true);
 
     // Assertions
     expect(tasks).toBeArray();
