@@ -26,9 +26,9 @@ test("run a task with claude code agent", async () => {
     };
     
     const gitRemoteUrl = "https://github.com/lidangzzz/tinycc";
-
+    const randomNum = Math.floor(Math.random() * 1000000000);
     const task: Task = {
-        ID: "test-task-1",
+        ID: "test-task-1" + randomNum.toString(),
         title: "add more details to the README.",
         description: "For the tinycc project, add more details to the README.",
         priority: 3,

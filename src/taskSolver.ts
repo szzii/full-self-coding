@@ -65,10 +65,28 @@ export class TaskSolver {
       // get the command
       const commandArray = taskSolverCommands(this.agentType, this.config, this.task, this.gitURL);
 
-      // run the command
+      // split the commandArray, the first N-1 commands to run using dockerInstance.runCommands
+      // the last command to run using dockerInstance.runCommandAsync
+      const lastCommand = commandArray.pop();
+
+      // run the first N-1 commands
       const dockerResult = await this.dockerInstance.runCommands(commandArray, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
 
+      let finalOutputOfTaskSolverCommand = null;
 
+      // run the last command asynchronously
+      if (lastCommand) {
+        finalOutputOfTaskSolverCommand = await this.dockerInstance.runCommandAsync(lastCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+      }
+      else {
+        throw new Error("Last command for running task solver is undefined.");
+      }
+
+      // parse the output of the last command
+      if (finalOutputOfTaskSolverCommand.status !== DockerRunStatus.SUCCESS) {
+        console.error(`Docker run task solver command failed with status ${finalOutputOfTaskSolverCommand.status}`);
+        throw new Error(`Docker run task solver command failed with status ${finalOutputOfTaskSolverCommand.status}`);
+      }
 
       // parse the output
       if (dockerResult.status !== DockerRunStatus.SUCCESS) {

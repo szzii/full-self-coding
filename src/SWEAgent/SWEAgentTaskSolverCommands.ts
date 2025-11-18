@@ -6,25 +6,6 @@ import {diffNodejsSourceCode} from "../prompts/diff_nodejs";
 import {getClaudeCommand} from "./claudeCodeCommands";
 
 const diffjsPrompt = diffNodejsSourceCode;
-function addTaskSolverPromptIntoPath(
-  taskSolverPrompt: string,
-  path: string = "/app/taskSolverPrompt.txt",
-): string[] {
-  // split the taskSolverPrompt by line break and add each line into the path
-  // if any of the line is longer than 256 chars, then split it into multiple string,
-  // and each string contains less than 256 chars
-  const lines = taskSolverPrompt.split("\n");
-  const commands: string[] = [];
-  for (const line of lines) {
-    if (line.length < 128) {
-      commands.push(line);
-    }
-    else {
-      commands.push(...splitBy256(line));
-    }
-  }
-  return commands.map((line) => `echo "${line}" >> ${path}`);
-}
 
 function environmentSetup(config: Config, gitRemoteUrl: string, task: Task, bInstallAgent: boolean = true): string[] {
   let setupCommands = [
@@ -93,17 +74,4 @@ export function taskSolverCommands(
     throw new Error("CODEX is not supported yet for the task solver.");
   }
   throw new Error(`Unsupported agent type: ${agentType}`);
-}
-
-
-function splitBy256(input: string): string[] {
-  const result: string[] = [];
-  let i = 0;
-
-  while (i < input.length) {
-    result.push(input.slice(i, i + 256));
-    i += 256;
-  }
-
-  return result;
 }

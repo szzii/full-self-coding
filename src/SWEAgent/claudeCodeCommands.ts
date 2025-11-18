@@ -3,12 +3,12 @@ import { type Config, SWEAgentType } from "../config";
 
 
 function claudeRunTaskWithAnthropicBaseURLAndAPIKey(baseURL: string, apiKey: string): string {
-    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_BASE_URL=${baseURL} && export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/taskSolverPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 
 function claudeRunTaskWithAnthropicAPIKey(apiKey: string): string {
-    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/codeAnalyzerPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
+    const command = `export ANTHROPIC_AUTH_TOKEN=${apiKey} && export IS_SANDBOX=1 && claude -p "all the task descriptions are located at /app/taskSolverPrompt.txt, please read and execute" --allowedTools "Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand" --permission-mode bypassPermissions`;
     return command;
 }
 

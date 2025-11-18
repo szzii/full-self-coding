@@ -128,6 +128,75 @@ export class DockerInstance {
         };
     }
 
+    async runCommandAsync(
+        command: string,
+        timeoutSeconds?: number): Promise<{
+        output: string;
+        success: boolean;
+        status: DockerRunStatus;
+        error?: string;
+    }> {
+
+        if (!this.containerName) {
+            throw new Error(`Container name is null, cannot run commands`);
+        }
+        if (command === null || command === undefined || typeof command !== 'string') {
+            throw new Error(`Invalid command: command must be a string`);
+        }
+
+        let output = "";
+        let error = "";
+        let success = true;
+        let status = DockerRunStatus.SUCCESS;
+
+        try {
+            console.log(`*****Async Running command: ${command} at docker: ${this.containerName}`);
+
+            const proc = spawn( {
+                cmd:[
+                "docker", "exec", this.containerName, "sh", "-c", command
+                    ],
+                timeout: timeoutSeconds ? timeoutSeconds * 1000 : 0,
+            });
+
+            // Wait for the process to complete and capture streams
+            const [stdoutText, stderrText] = await Promise.all([
+                new Response(proc.stdout).text(),
+                new Response(proc.stderr).text()
+            ]);
+
+            // Wait for the process to exit completely
+            await proc.exited;
+
+            output += `\n$ ${command}\n${stdoutText}`;
+
+            if (proc.exitCode !== 0) {
+                const errText = stderrText;
+                error += `\nError running '${command}': ${errText || "Unknown error"}`;
+                success = false;
+                status = DockerRunStatus.FAILURE;
+            }
+
+        } catch (e: any) {
+            // Check if it's a timeout error
+            if (e?.message?.includes('timeout') || e?.name === 'TimeoutError') {
+                status = DockerRunStatus.TIMEOUT;
+                error += `\nTimeout: Command execution exceeded ${timeoutSeconds || 'default'} seconds`;
+            } else {
+                status = DockerRunStatus.FAILURE;
+                error += `\nException: ${e?.message || e}`;
+            }
+            success = false;
+        }
+
+        return {
+            output,
+            success,
+            status,
+            error: error || undefined
+        };
+    }
+
     /**
      * Stops and removes a Docker container.
      * @param containerName The name of the container to shut down.

@@ -14,7 +14,7 @@ test("analyzeCodebase generates tasks correctly with claude code agent in real D
         dockerTimeoutSeconds: 10000, // Increased timeout for real Docker operations
         maxDockerContainers: 5,
         maxParallelDockerContainers: 1,
-        maxTasks: 100,
+        maxTasks: 5,
         minTasks: 1,
         dockerMemoryMB: 512,
         dockerCpuCores: 1,
