@@ -1,4 +1,5 @@
 import {WorkStyle} from './workStyle';
+import type { ZentaoConfig } from './integrations/zentaoIntegration';
 
 /**
  * Available types of Software Engineering agents
@@ -8,6 +9,40 @@ export enum SWEAgentType {
     CLAUDE_CODE = 'claude-code',
     CODEX = 'codex',
     CURSOR = 'cursor',
+}
+
+/**
+ * 项目信息接口
+ */
+export interface ProjectInfo {
+    name: string;
+    path: string;
+    gitUrl: string;
+    description?: string;
+    technicalStack?: string[];  // 技术栈：如 ["TypeScript", "React", "Node.js"]
+    modules?: string[];         // 模块列表：如 ["auth", "api", "frontend"]
+}
+
+/**
+ * Issue平台配置接口
+ */
+export interface IssuePlatformConfig {
+    type: 'github' | 'gitlab';
+    token: string;              // API访问token
+    url?: string;               // GitLab实例URL（自托管时需要）
+    owner?: string;             // GitHub owner（如：facebook）
+    defaultRepo?: string;       // 默认仓库名
+    defaultLabels?: string[];   // 默认标签
+}
+
+/**
+ * 工作流配置接口
+ */
+export interface WorkflowConfig {
+    enabled: boolean;           // 是否启用工作流模式
+    autoApprove?: boolean;      // 自动批准，不需要用户确认
+    autoClose?: boolean;        // 自动关闭已完成的issue
+    pollInterval?: number;      // 轮询间隔（秒）
 }
 
 /**
@@ -143,11 +178,34 @@ export interface Config {
 
     /**
      * use Github ssh instead of https.
-     * If you want to access to your private repositories, 
+     * If you want to access to your private repositories,
      * you must set this to true, and have set up ssh keys for Github.
      * This is the only way to access and git clone your private repositories.
      */
     useGithubSSH?: boolean;
+
+    // ===== 新增：工作流模式配置 =====
+
+    /**
+     * 工作流配置
+     */
+    workflow?: WorkflowConfig;
+
+    /**
+     * 禅道配置
+     */
+    zentao?: ZentaoConfig;
+
+    /**
+     * 项目配置列表
+     * 用于工作流模式中的项目匹配
+     */
+    projects?: ProjectInfo[];
+
+    /**
+     * Issue平台配置（GitHub或GitLab）
+     */
+    issuePlatform?: IssuePlatformConfig;
 }
 
 /**

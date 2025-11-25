@@ -1,0 +1,59 @@
+{
+  "agentType": "claude-code",
+  "maxDockerContainers": 10,
+  "maxParallelDockerContainers": 5,
+  "dockerTimeoutSeconds": 600,
+  "maxTasks": 20,
+  "minTasks": 1,
+
+  "anthropicAPIKey": "your-anthropic-api-key-here",
+
+  "workflow": {
+    "enabled": true,
+    "autoApprove": false,
+    "autoClose": true,
+    "pollInterval": 300
+  },
+
+  "zentao": {
+    "apiUrl": "http://your-zentao-server.com",
+    "account": "your-account",
+    "password": "your-password",
+    "productIds": [1, 2, 3],
+    "projectIds": [10, 20]
+  },
+
+  "projects": [
+    {
+      "name": "frontend-app",
+      "path": "/path/to/frontend-app",
+      "gitUrl": "git@gitlab.com:your-org/frontend-app.git",
+      "description": "前端应用项目",
+      "technicalStack": ["TypeScript", "React", "Vite", "TailwindCSS"],
+      "modules": ["auth", "dashboard", "settings", "api-client"]
+    },
+    {
+      "name": "backend-api",
+      "path": "/path/to/backend-api",
+      "gitUrl": "git@gitlab.com:your-org/backend-api.git",
+      "description": "后端API服务",
+      "technicalStack": ["Node.js", "Express", "PostgreSQL", "Redis"],
+      "modules": ["auth", "users", "products", "orders", "payments"]
+    },
+    {
+      "name": "mobile-app",
+      "path": "/path/to/mobile-app",
+      "gitUrl": "git@gitlab.com:your-org/mobile-app.git",
+      "description": "移动应用",
+      "technicalStack": ["React Native", "TypeScript", "Redux"],
+      "modules": ["auth", "home", "profile", "notifications"]
+    }
+  ],
+
+  "issuePlatform": {
+    "type": "gitlab",
+    "token": "your-gitlab-access-token",
+    "url": "https://gitlab.com",
+    "defaultLabels": ["auto-generated", "ai-agent"]
+  }
+}
