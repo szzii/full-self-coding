@@ -5,6 +5,7 @@ function streamToTextSync(stream: Uint8Array | null | undefined): string {
 }
 import { spawnSync, spawn } from "bun";
 import { time } from "console";
+import type { Config } from "./config";
 
 /**
  * Status of Docker command execution
@@ -23,6 +24,15 @@ export interface DockerRunOptions {
 
 export class DockerInstance {
     private containerName: string | null = null;
+    private config?: Config;
+
+    /**
+     * Creates a new DockerInstance
+     * @param config Optional configuration for proxy settings
+     */
+    constructor(config?: Config) {
+        this.config = config;
+    }
 
 		/**
 		 * Get the container name
@@ -42,9 +52,33 @@ export class DockerInstance {
 
         // wait for 0.5 seconds to make sure the container is started
         await new Promise(resolve => setTimeout(resolve, 500));
-        const startResult = spawnSync([
-            "docker", "run", "-d", "--name", this.containerName, image, "sleep", "infinity"
-        ]);
+
+        // Build docker run command with proxy settings
+        const dockerArgs = ["docker", "run", "-d", "--name", this.containerName];
+
+        // Add proxy environment variables from config or process.env
+        const httpProxy = this.config?.httpProxy || process.env.http_proxy || process.env.HTTP_PROXY;
+        const httpsProxy = this.config?.httpsProxy || process.env.https_proxy || process.env.HTTPS_PROXY;
+        const noProxy = this.config?.noProxy || process.env.no_proxy || process.env.NO_PROXY;
+
+        if (httpProxy) {
+            dockerArgs.push("-e", `http_proxy=${httpProxy}`);
+            dockerArgs.push("-e", `HTTP_PROXY=${httpProxy}`);
+            console.log(`Setting HTTP proxy for container: ${httpProxy}`);
+        }
+        if (httpsProxy) {
+            dockerArgs.push("-e", `https_proxy=${httpsProxy}`);
+            dockerArgs.push("-e", `HTTPS_PROXY=${httpsProxy}`);
+            console.log(`Setting HTTPS proxy for container: ${httpsProxy}`);
+        }
+        if (noProxy) {
+            dockerArgs.push("-e", `no_proxy=${noProxy}`);
+            dockerArgs.push("-e", `NO_PROXY=${noProxy}`);
+        }
+
+        dockerArgs.push(image, "sleep", "infinity");
+
+        const startResult = spawnSync(dockerArgs);
 
         console.log(`Starting container ${this.containerName} with image ${image}`);
         if (startResult.exitCode !== 0) {

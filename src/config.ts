@@ -143,11 +143,32 @@ export interface Config {
 
     /**
      * use Github ssh instead of https.
-     * If you want to access to your private repositories, 
+     * If you want to access to your private repositories,
      * you must set this to true, and have set up ssh keys for Github.
      * This is the only way to access and git clone your private repositories.
      */
     useGithubSSH?: boolean;
+
+    /**
+     * HTTP proxy for Docker containers
+     * Will be passed as http_proxy and HTTP_PROXY environment variables
+     * Example: "http://192.168.1.1:1080"
+     */
+    httpProxy?: string;
+
+    /**
+     * HTTPS proxy for Docker containers
+     * Will be passed as https_proxy and HTTPS_PROXY environment variables
+     * Example: "http://192.168.1.1:1080"
+     */
+    httpsProxy?: string;
+
+    /**
+     * No proxy settings for Docker containers
+     * Comma-separated list of domains that should not use proxy
+     * Example: "localhost,127.0.0.1,.local"
+     */
+    noProxy?: string;
 }
 
 /**

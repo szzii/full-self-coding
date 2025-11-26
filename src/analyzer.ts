@@ -20,7 +20,7 @@ export async function analyzeCodebase(
     extraComandsBeforeAnalysis?: string
 ): Promise<Task[]> {
 
-    const docker = new DockerInstance();
+    const docker = new DockerInstance(config);
     let containerName: string | undefined;
     let tasks: Task[] = [];
 
@@ -93,7 +93,7 @@ export async function analyzeCodebase(
                 allCommands.push(`npm install -g @google/gemini-cli`);
                 break;
             case SWEAgentType.CLAUDE_CODE:
-                allCommands.push(`npm install -g @anthropic-ai/claude-code`);
+                allCommands.push(`unset http_proxy && unset https_proxy && unset HTTP_PROXY && unset HTTPS_PROXY && npm install -g https://gaccode.com/claudecode/install --registry=https://registry.npmmirror.com`);
                 break;
             case SWEAgentType.CODEX:
                 allCommands.push(`npm install -g @openai/codex`);

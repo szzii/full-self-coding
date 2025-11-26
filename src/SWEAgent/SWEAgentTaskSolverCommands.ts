@@ -28,7 +28,7 @@ function environmentSetup(config: Config, gitRemoteUrl: string, task: Task, bIns
         break;
       case SWEAgentType.CLAUDE_CODE:
         setupCommands.push(
-          "npm install -g @anthropic-ai/claude-code",
+          "unset http_proxy && unset https_proxy && unset HTTP_PROXY && unset HTTPS_PROXY && npm install -g https://gaccode.com/claudecode/install --registry=https://registry.npmmirror.com",
         );
         break;
       case SWEAgentType.CODEX:
