@@ -56,6 +56,10 @@ export interface ZentaoBug {
   type: 'codeerror' | 'interface' | 'config' | 'install' | 'security' | 'performance' | 'standard' | 'automation' | 'designdefect' | 'others';
   os: string;             // 操作系统
   browser: string;        // 浏览器
+  files?: string[];       // 附件文件ID列表
+  openedBy?: string;      // 创建者
+  openedDate?: string;    // 创建时间
+  resolvedDate?: string;  // 解决时间
 }
 
 /**
@@ -97,6 +101,7 @@ export class ZentaoIntegration {
       headers: {
         'Content-Type': 'application/json',
       },
+      proxy: false, // 禁用代理，避免内网地址走代理导致502错误
     });
 
     // 添加响应拦截器处理错误
@@ -119,17 +124,18 @@ export class ZentaoIntegration {
    */
   private async login(): Promise<void> {
     try {
-      const response = await this.client.post<ZentaoAPIResponse>('/api.php/v1/tokens', {
+      const response = await this.client.post<any>('/api.php/v1/tokens', {
         account: this.config.account,
         password: this.config.password,
       });
 
-      if (response.data.status === 'success' && response.data.data?.token) {
-        this.sessionID = response.data.data.token;
+      // 禅道 API 直接返回 { "token": "..." } 格式
+      if (response.data?.token) {
+        this.sessionID = response.data.token;
         // 设置后续请求的token header
         this.client.defaults.headers.common['Token'] = this.sessionID;
       } else {
-        throw new Error(`禅道登录失败: ${response.data.message || '未知错误'}`);
+        throw new Error(`禅道登录失败: 无法获取 token (响应数据: ${JSON.stringify(response.data)})`);
       }
     } catch (error: any) {
       throw new Error(`禅道登录失败: ${error.message}`);
@@ -171,7 +177,7 @@ export class ZentaoIntegration {
     // 遍历所有产品获取需求
     for (const productId of productIds) {
       try {
-        const response = await this.client.get<ZentaoAPIResponse>(
+        const response = await this.client.get<any>(
           `/api.php/v1/products/${productId}/stories`,
           {
             params: {
@@ -181,10 +187,21 @@ export class ZentaoIntegration {
           }
         );
 
-        if (response.data.status === 'success' && response.data.data?.stories) {
-          const stories = Array.isArray(response.data.data.stories)
+        // 尝试多种响应格式
+        let stories: any[] = [];
+        if (response.data?.stories) {
+          stories = Array.isArray(response.data.stories)
+            ? response.data.stories
+            : Object.values(response.data.stories);
+        } else if (response.data?.data?.stories) {
+          stories = Array.isArray(response.data.data.stories)
             ? response.data.data.stories
             : Object.values(response.data.data.stories);
+        } else if (Array.isArray(response.data)) {
+          stories = response.data;
+        }
+
+        if (stories.length > 0) {
 
           for (const story of stories) {
             // 应用过滤条件
@@ -254,7 +271,7 @@ export class ZentaoIntegration {
     // 遍历所有产品获取Bug
     for (const productId of productIds) {
       try {
-        const response = await this.client.get<ZentaoAPIResponse>(
+        const response = await this.client.get<any>(
           `/api.php/v1/products/${productId}/bugs`,
           {
             params: {
@@ -264,10 +281,21 @@ export class ZentaoIntegration {
           }
         );
 
-        if (response.data.status === 'success' && response.data.data?.bugs) {
-          const bugsList = Array.isArray(response.data.data.bugs)
+        // 尝试多种响应格式
+        let bugsList: any[] = [];
+        if (response.data?.bugs) {
+          bugsList = Array.isArray(response.data.bugs)
+            ? response.data.bugs
+            : Object.values(response.data.bugs);
+        } else if (response.data?.data?.bugs) {
+          bugsList = Array.isArray(response.data.data.bugs)
             ? response.data.data.bugs
             : Object.values(response.data.data.bugs);
+        } else if (Array.isArray(response.data)) {
+          bugsList = response.data;
+        }
+
+        if (bugsList.length > 0) {
 
           for (const bug of bugsList) {
             // 应用过滤条件
@@ -306,6 +334,10 @@ export class ZentaoIntegration {
               type: bug.type || 'others',
               os: bug.os || '',
               browser: bug.browser || '',
+              files: bug.files || [],
+              openedBy: bug.openedBy || '',
+              openedDate: bug.openedDate || '',
+              resolvedDate: bug.resolvedDate || '',
             });
           }
         }
@@ -451,13 +483,13 @@ export class ZentaoIntegration {
   }
 
   /**
-   * 获取产品列表（内部方法）
+   * 获取产品列表
    */
-  private async fetchProducts(): Promise<Array<{ id: number; name: string }>> {
+  async fetchProducts(): Promise<Array<{ id: number; name: string; status?: string }>> {
     await this.ensureLoggedIn();
 
     try {
-      const response = await this.client.get<ZentaoAPIResponse>(
+      const response = await this.client.get<any>(
         '/api.php/v1/products',
         {
           params: {
@@ -466,21 +498,223 @@ export class ZentaoIntegration {
         }
       );
 
-      if (response.data.status === 'success' && response.data.data?.products) {
-        const products = Array.isArray(response.data.data.products)
+      // 尝试多种响应格式
+      let products: any[] = [];
+      if (response.data?.products) {
+        products = Array.isArray(response.data.products)
+          ? response.data.products
+          : Object.values(response.data.products);
+      } else if (response.data?.data?.products) {
+        products = Array.isArray(response.data.data.products)
           ? response.data.data.products
           : Object.values(response.data.data.products);
-
-        return products.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-        }));
+      } else if (Array.isArray(response.data)) {
+        products = response.data;
       }
 
-      return [];
+      return products.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        status: p.status,
+      }));
     } catch (error: any) {
       console.error('获取产品列表失败:', error.message);
       return [];
+    }
+  }
+
+  /**
+   * 获取项目列表
+   */
+  async fetchProjects(): Promise<Array<{ id: number; name: string; status?: string }>> {
+    await this.ensureLoggedIn();
+
+    try {
+      const response = await this.client.get<any>(
+        '/api.php/v1/projects',
+        {
+          params: {
+            limit: 1000,
+          }
+        }
+      );
+
+      // 尝试多种响应格式
+      let projects: any[] = [];
+      if (response.data?.projects) {
+        projects = Array.isArray(response.data.projects)
+          ? response.data.projects
+          : Object.values(response.data.projects);
+      } else if (response.data?.data?.projects) {
+        projects = Array.isArray(response.data.data.projects)
+          ? response.data.data.projects
+          : Object.values(response.data.data.projects);
+      } else if (Array.isArray(response.data)) {
+        projects = response.data;
+      }
+
+      return projects.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        status: p.status,
+      }));
+    } catch (error: any) {
+      console.error('获取项目列表失败:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * 获取Bug的附件列表
+   */
+  async getBugFiles(bugId: number): Promise<Array<{ id: number; title: string; extension: string; size: number; pathname: string; downloadUrl?: string }>> {
+    await this.ensureLoggedIn();
+
+    try {
+      // 先获取Bug详情，从中提取附件信息
+      const response = await this.client.get<any>(
+        `/api.php/v1/bugs/${bugId}`
+      );
+
+      let bugData: any = null;
+      if (response.data?.bug) {
+        bugData = response.data.bug;
+      } else if (response.data?.data) {
+        bugData = response.data.data;
+      } else if (response.data?.id) {
+        bugData = response.data;
+      }
+
+      if (!bugData) {
+        return [];
+      }
+
+      // 从Bug数据中提取附件信息
+      let files: any[] = [];
+      if (bugData.files) {
+        files = Array.isArray(bugData.files)
+          ? bugData.files
+          : Object.values(bugData.files);
+      }
+
+      return files.map((f: any) => ({
+        id: f.id,
+        title: f.title || f.name || 'unknown',
+        extension: f.extension || '',
+        size: f.size || 0,
+        pathname: f.pathname || f.webPath || '',
+        downloadUrl: f.webPath || f.pathname || '',
+      }));
+    } catch (error: any) {
+      // 如果获取详情失败，尝试直接获取附件列表
+      try {
+        const filesResponse = await this.client.get<any>(
+          `/api.php/v1/bugs/${bugId}/files`
+        );
+
+        let files: any[] = [];
+        if (filesResponse.data?.files) {
+          files = Array.isArray(filesResponse.data.files)
+            ? filesResponse.data.files
+            : Object.values(filesResponse.data.files);
+        } else if (filesResponse.data?.data?.files) {
+          files = Array.isArray(filesResponse.data.data.files)
+            ? filesResponse.data.data.files
+            : Object.values(filesResponse.data.data.files);
+        } else if (Array.isArray(filesResponse.data)) {
+          files = filesResponse.data;
+        }
+
+        return files.map((f: any) => ({
+          id: f.id,
+          title: f.title || f.name || 'unknown',
+          extension: f.extension || '',
+          size: f.size || 0,
+          pathname: f.pathname || f.webPath || '',
+          downloadUrl: f.webPath || f.pathname || '',
+        }));
+      } catch (innerError: any) {
+        console.error(`获取Bug ${bugId} 的附件失败:`, innerError.message);
+        return [];
+      }
+    }
+  }
+
+  /**
+   * 下载文件
+   */
+  async downloadFile(fileId: number, outputPath: string, pathname?: string): Promise<boolean> {
+    await this.ensureLoggedIn();
+
+    const fs = await import('fs');
+    const path = await import('path');
+
+    try {
+      // 尝试多种下载方式
+      let response;
+      let downloadSuccess = false;
+
+      // 方式1: 使用 /api.php/v1/files/{fileId}
+      try {
+        response = await this.client.get(
+          `/api.php/v1/files/${fileId}`,
+          {
+            responseType: 'arraybuffer',
+          }
+        );
+        downloadSuccess = true;
+      } catch (e1) {
+        // 方式2: 使用 pathname 直接下载
+        if (pathname) {
+          try {
+            // 移除 API URL，使用完整的文件路径
+            const fileUrl = pathname.startsWith('http')
+              ? pathname
+              : `${this.config.apiUrl}${pathname.startsWith('/') ? '' : '/'}${pathname}`;
+
+            response = await this.client.get(
+              fileUrl,
+              {
+                responseType: 'arraybuffer',
+                baseURL: undefined, // 使用完整URL时不使用baseURL
+              }
+            );
+            downloadSuccess = true;
+          } catch (e2) {
+            // 方式3: 尝试使用禅道的文件下载路径
+            try {
+              response = await this.client.get(
+                `/file-read-${fileId}`,
+                {
+                  responseType: 'arraybuffer',
+                }
+              );
+              downloadSuccess = true;
+            } catch (e3) {
+              throw new Error(`所有下载方式都失败: ${e1.message}, ${e2.message}, ${e3.message}`);
+            }
+          }
+        } else {
+          throw e1;
+        }
+      }
+
+      if (downloadSuccess && response) {
+        // 确保目录存在
+        const dir = path.dirname(outputPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        // 写入文件
+        fs.writeFileSync(outputPath, Buffer.from(response.data));
+        return true;
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error(`下载文件 ${fileId} 失败:`, error.message);
+      return false;
     }
   }
 
